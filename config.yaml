@@ -18,7 +18,8 @@ auth_extractors:
   - guillotina.auth.extractors.WSTokenAuthPolicy
 auth_token_validators:
   - guillotina.auth.validators.SaltedHashPasswordValidator
-  - guillotina.auth.validators.JWTValidator
+  # - guillotina.auth.validators.JWTValidator
+  - infolio.auth.MastodonValidator
 cors:
   allow_origin:
     - http://localhost:8080

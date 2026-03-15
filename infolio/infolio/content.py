@@ -1,9 +1,15 @@
 from guillotina import configure, content, schema
-from guillotina.interfaces import IFolder
+from guillotina.interfaces import IFolder, IItem, IRolePermissionManager
+from guillotina.content import create_content_in_container
 from guillotina.security.utils import apply_sharing
+import hashlib
+
+import requests
 
 class IAccount(IFolder):
     user = schema.Text(required=True)
+    mastodon_token = schema.Text(required=True)
+    code = schema.Text(required=True)
 
 
 @configure.contenttype(
@@ -11,7 +17,71 @@ class IAccount(IFolder):
     schema=IAccount,
     allowed_types=['Page'])
 class Account(content.Folder):
+
+    def get_profile(self):
+        mastodon = self.__parent__
+        profile_url = f"{mastodon.url}/oauth/userinfo"
+        return requests.post(
+            profile_url,
+            headers={
+                "Authorization": f"Bearer {self.mastodon_token}",
+                "Accept": "application/json",
+            }
+        ).json()
+
+
+class IMastodonContainer(IFolder):
     pass
+
+
+@configure.contenttype(
+    type_name="MastodonContainer",
+    schema=IMastodonContainer,
+    allowed_types=['MastodonInstance'])
+class MastodonContainer(content.Folder):
+    pass
+
+
+class IMastodonInstance(IItem):
+    url = schema.Text(required=True)
+    client_id = schema.Text(required=True)
+    client_secret = schema.Text(required=True)
+
+@configure.contenttype(
+    type_name="MastodonInstance",
+    schema=IMastodonInstance,
+    allowed_types=['IAccount'],
+    globally_addable=False)
+class MastodonInstance(content.Folder):
+    def get_user_profile(self, mastodon_token):
+        profile_url = f"{self.url}/oauth/userinfo"
+        return requests.post(
+            profile_url,
+            headers={
+                "Authorization": f"Bearer {mastodon_token}",
+                "Accept": "application/json",
+            }
+        ).json()
+
+    async def get_or_create_account(self, mastodon_token):
+        profile_data = self.get_user_profile(mastodon_token)
+        account_id = profile_data["profile"].split("/")[-1]
+        account = await self.get_account(account_id)
+        if not account:
+            roleperm = IRolePermissionManager(self)
+            roleperm.grant_permission_to_role('guillotina.AddContent', 'guillotina.Public')
+            account = await self.create_account(account_id, profile_data)
+        account.mastodon_token = mastodon_token
+        account.code = hashlib.sha256(mastodon_token).hexdigest()
+        return account
+
+    async def get_account(self, account_id):
+        return await self.async_get(account_id)
+    
+    async def create_account(self, account_id, profile_data):
+        account = await create_content_in_container(self, 'Account', account_id)
+        account.user = profile_data["name"]
+        return account
 
 
 class IPage(IFolder):
