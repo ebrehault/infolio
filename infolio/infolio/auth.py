@@ -25,21 +25,24 @@ class MastodonValidator:
             math.ceil(math.ceil(time.time()) / USER_CACHE_DURATION),
         )
 
-    async def validate(self, token):
+    async def validate(self, token):        
         try:
             validated_jwt = jwt.decode(
                 token["token"],
                 app_settings["jwt"]["secret"],
                 algorithms=[app_settings["jwt"]["algorithm"]],
             )
+            print(validated_jwt)
         except jwt.exceptions.ExpiredSignatureError:
             raise HTTPUnauthorized()
         
-        # TODO: fix it
-        cache_key = self.get_user_cache_key("alice", token['token'])
+        username = validated_jwt.get("preferred_username")
+        if not username:
+            raise HTTPUnauthorized()
+        cache_key = self.get_user_cache_key(username, token['token'])
         if cache_key in USER_CACHE:
             return USER_CACHE[cache_key]
-        if token['token'] == 'ok':
-            user = GuillotinaUser(user_id='yep')
+        else:
+            user = GuillotinaUser(user_id=username)
             USER_CACHE[cache_key] = user
             return user

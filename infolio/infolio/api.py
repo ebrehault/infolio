@@ -1,8 +1,9 @@
 import base64
 import json
 
+import jwt
 import requests
-from guillotina import configure
+from guillotina import configure, app_settings
 from infolio.content import IMastodonInstance, IPage
 from guillotina.response import Response
 from guillotina.exceptions import Unauthorized
@@ -54,7 +55,7 @@ async def publish(context, request):
         permission='guillotina.Public', allow_access=True)
 async def login(context, request):
     # TODO: fix, use env var
-    redirect = f"https://559f-2a01-e0a-fb6-1ad0-cc14-a807-acc3-18fd.ngrok-free.app/db/container/mastodons/{context.id}/@callback"
+    redirect = f"https://109b-82-64-57-232.ngrok-free.app/db/container/mastodons/{context.id}/@callback"
     came_from = request.query.get('came_from')
     state = base64.b64encode(json.dumps({"came_from": came_from}).encode('utf-8')).decode('ascii')
     oauth_authorize_url = f"{context.url}/oauth/authorize?client_id={context.client_id}&response_type=code&scope=profile&state={state}&redirect_uri={redirect}"
@@ -69,13 +70,12 @@ async def login(context, request):
         context=IMastodonInstance,
         permission='guillotina.Public', allow_access=True)
 async def callback(context, request):
-    # TODO: fix, use env var
-    redirect = f"https://559f-2a01-e0a-fb6-1ad0-cc14-a807-acc3-18fd.ngrok-free.app/db/container/mastodons/{context.id}/@callback"
+    redirect = f"https://109b-82-64-57-232.ngrok-free.app/db/container/mastodons/{context.id}/@callback"
     code = request.query.get('code')
     if not code:
         raise Unauthorized("Missing code")
     state = request.query.get('state')
-    came_from = json.loads(base64.b64decode(state.encode('ascii')).decode('utf-8'))["came_from"]
+    came_from = json.loads(base64.b64decode(state.encode('ascii')).decode('utf-8')).get("came_from")
     token_url = f"{context.url}/oauth/token"
     res = requests.post(
         token_url,
@@ -86,20 +86,69 @@ async def callback(context, request):
             "redirect_uri": redirect,
             "code": code,
         }
-    )
-    token = res.json()['access_token']
-    account = await context.get_or_create_account(token)
-    code = account.code
+    ).json()
+    if res.get("error"):
+        print(res)
+        raise Unauthorized("Invalid code")
+    token = res['access_token']
+    profile_url = f"{context.url}/oauth/userinfo"
+    profile = requests.post(
+        profile_url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        }
+    ).json()
+    print(profile)
+    jwt_token = jwt.encode(profile, app_settings["jwt"]["secret"], app_settings["jwt"]["algorithm"])
     if not came_from:
-        came_from = get_object_url(account)
+        came_from = "/"
     if "?" in came_from:
-      came_from += f"&code={code}"
+        came_from += f"&token={jwt_token}"
     else:
-      came_from += f"?code={code}"
+        came_from += f"?token={jwt_token}"
     return Response(
         status=302,
-        headers={"location": came_from}
+        headers={"location": came_from, "Authorization": f"Bearer {jwt_token}"}
     )
+
+# @configure.service(
+#         method='GET',
+#         name='@callback',
+#         context=IMastodonInstance,
+#         permission='guillotina.Public', allow_access=True)
+# async def callback(context, request):
+#     # TODO: fix, use env var
+#     redirect = f"https://109b-82-64-57-232.ngrok-free.app/db/container/mastodons/{context.id}/@callback"
+#     code = request.query.get('code')
+#     if not code:
+#         raise Unauthorized("Missing code")
+#     state = request.query.get('state')
+#     came_from = json.loads(base64.b64decode(state.encode('ascii')).decode('utf-8'))["came_from"]
+#     token_url = f"{context.url}/oauth/token"
+#     res = requests.post(
+#         token_url,
+#         json={
+#             "grant_type": "authorization_code",
+#             "client_id": context.client_id,
+#             "client_secret": context.client_secret,
+#             "redirect_uri": redirect,
+#             "code": code,
+#         }
+#     )
+#     token = res.json()['access_token']
+#     account = await context.get_or_create_account(token)
+#     code = account.code
+#     if not came_from:
+#         came_from = get_object_url(account)
+#     if "?" in came_from:
+#       came_from += f"&code={code}"
+#     else:
+#       came_from += f"?code={code}"
+#     return Response(
+#         status=302,
+#         headers={"location": came_from}
+#     )
 
 def validate_code(context, request):
     code = request.query.get('code')
@@ -107,7 +156,7 @@ def validate_code(context, request):
         raise Unauthorized("Missing code")
     account = None
     if context.type_name == 'Page':
-        account = context.get_account().code
+        account = context.get_account()
     elif context.type_name == 'Account':
         account = context
     if account and account.code == code:
