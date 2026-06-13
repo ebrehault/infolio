@@ -23,6 +23,7 @@ auth_token_validators:
 cors:
   allow_origin:
     - http://localhost:8080
+    - http://localhost:5173
     - 'chrome-extension://*'
   allow_methods:
     - GET

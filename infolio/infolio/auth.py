@@ -1,6 +1,7 @@
 from aiohttp.web_exceptions import HTTPUnauthorized
 from guillotina.auth.users import GuillotinaUser
 from guillotina import app_settings, task_vars
+from guillotina.interfaces import Allow
 from lru import LRU
 
 import jwt
@@ -32,7 +33,6 @@ class MastodonValidator:
                 app_settings["jwt"]["secret"],
                 algorithms=[app_settings["jwt"]["algorithm"]],
             )
-            print(validated_jwt)
         except jwt.exceptions.ExpiredSignatureError:
             raise HTTPUnauthorized()
         
@@ -43,6 +43,6 @@ class MastodonValidator:
         if cache_key in USER_CACHE:
             return USER_CACHE[cache_key]
         else:
-            user = GuillotinaUser(user_id=username)
+            user = GuillotinaUser(user_id=username, roles={"guillotina.Member": Allow})
             USER_CACHE[cache_key] = user
             return user
