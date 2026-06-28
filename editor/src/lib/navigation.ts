@@ -1,4 +1,4 @@
-import { setPath } from './lib/store.svelte';
+import { setPath } from './store.svelte';
 
 export function initNavigation() {
   // Adapted from https://github.com/sveltejs/kit/blob/master/packages/kit/src/runtime/client/router.js

@@ -1,5 +1,5 @@
-import { API } from './lib/api';
-import { getState, setCurrentPage, setMastodons, setPages, setUsername } from './lib/store.svelte';
+import { API } from './api';
+import { getState, setCurrentPage, setMastodons, setPages, setUsername } from './store.svelte';
 
 export function initLogin() {
   const url = new URL(location.href);
