@@ -46,16 +46,24 @@ export const API = {
     return fetchAPI<Page[]>(`@get_pages`);
   },
 
-  addPage: (path: string, id: string, title: string, code?: string) => {
-    return fetchAPI<any>(path, 'POST', { '@type': 'Page', id, title, code });
+  getPage: (path: string) => {
+    return fetchAPI<Page>(path);
   },
 
-  modifyPage: (path: string, title?: string, code?: string) => {
-    return fetchAPI<any>(path, 'PATCH', { title, code });
+  addPage: (path: string, id: string, title: string, body?: string) => {
+    return fetchAPI<any>(path, 'POST', { '@type': 'Page', id, title, body });
+  },
+
+  modifyPage: (path: string, data: { title?: string; body?: string }) => {
+    return fetchAPI<any>(path, 'PATCH', data);
   },
 
   deletePage: (path: string) => {
     return fetchAPI(path, 'DELETE');
+  },
+
+  publishPage: (path: string) => {
+    return fetchAPI(`${path}/@publish`, 'POST');
   },
 };
 function fetchAPI<T>(path: string, method = 'GET', body?: any): Promise<APIResponse<T>> {

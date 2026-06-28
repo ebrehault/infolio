@@ -11,6 +11,7 @@ from infolio.content import (
     create_content_in_container,
 )
 from guillotina.response import Response
+from guillotina.api.content import DefaultGET
 from guillotina.exceptions import Unauthorized
 from guillotina.utils import get_object_url, get_authenticated_user
 from guillotina.behaviors.dublincore import IDublinCore
@@ -30,20 +31,23 @@ html_template = """<html>
 
 @configure.service(
     method="GET",
-    name="@view",
+    # name="@view",
     context=IPage,
     permission="guillotina.ViewContent",
     allow_access=True,
 )
 async def view(context, request):
-    account = context.get_account()
-    content = html_template.format(
-        user=getattr(account, "user", ""), title=context.title, body=context.body
-    )
-    return Response(
-        content=content,
-        status=200,
-    )
+    if "text/html" in request.headers["ACCEPT"]:
+        account = context.get_account()
+        content = html_template.format(
+            user=getattr(account, "user", ""), title=context.title, body=context.body
+        )
+        return Response(
+            content=content,
+            status=200,
+        )
+    else:
+        return await DefaultGET(context, request)()
 
 
 @configure.service(

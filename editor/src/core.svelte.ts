@@ -1,5 +1,5 @@
 import { API } from './lib/api';
-import { getState, setMastodons, setPages, setUsername } from './lib/store.svelte';
+import { getState, setCurrentPage, setMastodons, setPages, setUsername } from './lib/store.svelte';
 
 export function initLogin() {
   const url = new URL(location.href);
@@ -40,11 +40,26 @@ export function loadPages() {
 }
 
 export function createAccount() {
-  API.createAccount().then((res) => console.log(res));
+  return API.createAccount().then((res) => console.log(res));
+}
+export function getPage(path: string) {
+  return API.getPage(`${getState().username}/${path}`).then((res) => {
+    if (res.success) {
+      setCurrentPage(res.response);
+    } else {
+      setCurrentPage(undefined);
+    }
+  });
 }
 export function addPage() {
-  API.addPage(getState().username, 'test', 'Test', 'Hello').then((res) => loadPages());
+  return API.addPage(getState().username, 'test', 'Test', 'Hello').then((res) => loadPages());
 }
-export function deletePage(id: string) {
-  API.deletePage(`${getState().username}/${id}`).then((res) => loadPages());
+export function deletePage(path: string) {
+  return API.deletePage(`${getState().username}/${path}`).then((res) => loadPages());
+}
+export function editPage(path: string, data: { title?: string; body?: string }) {
+  return API.modifyPage(`${getState().username}/${path}`, data).then((res) => loadPages());
+}
+export function publishPage(path: string) {
+  return API.publishPage(`${getState().username}/${path}`);
 }

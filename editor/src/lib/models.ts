@@ -16,9 +16,10 @@ export interface APIError {
 }
 
 export interface Page {
+  '@id': string;
   id: string;
   title: string;
   created: string;
   modified: string;
-  code?: string;
+  body?: string;
 }

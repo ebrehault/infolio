@@ -38,13 +38,16 @@ export function initNavigation() {
   onpopstate = (event) => {
     navigate(document.location.pathname);
   };
+  navigate(location.href);
 }
 function find_anchor(node: any) {
   while (node && node.nodeName.toUpperCase() !== 'A') node = node.parentNode;
   return node;
 }
 
-export function navigate(path: string) {
-  history.pushState({}, '', path);
-  setPath(path);
+export function navigate(url: string) {
+  console.log('nav to', url);
+  history.pushState({}, '', url);
+  const path = new URL(url).pathname;
+  setPath(path.slice(1));
 }

@@ -5,6 +5,7 @@ interface State {
   mastodons: MastodonInstance[];
   username: string;
   pages: Page[];
+  currentPage?: Page;
 }
 
 const state = $state<State>({
@@ -35,4 +36,8 @@ export function setPath(path: string) {
 }
 export function getPath() {
   return state.path;
+}
+
+export function setCurrentPage(currentPage: Page | undefined) {
+  state.currentPage = currentPage;
 }
